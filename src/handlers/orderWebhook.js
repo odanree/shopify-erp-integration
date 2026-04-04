@@ -1,5 +1,6 @@
 const shopify = require("../services/shopify");
 const erp = require("../services/erp");
+const dlq = require("../services/dlq");
 const logger = require("../services/logger");
 
 /**
@@ -48,11 +49,11 @@ async function _processOrder(order) {
   const erpResult = await erp.createOrder(order);
 
   if (!erpResult.success) {
-    logger.error("Failed to create ERP order", {
+    logger.error("Failed to create ERP order — pushing to DLQ", {
       orderId: order.id,
       error: erpResult.error,
     });
-    // In production: push to a dead-letter queue / retry mechanism
+    dlq.push({ type: "order_sync", payload: { order }, error: erpResult.error });
     return;
   }
 

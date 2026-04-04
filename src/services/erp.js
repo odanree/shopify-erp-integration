@@ -33,11 +33,34 @@ class ErpService {
         logger.debug("ERP response", { status: res.status, url: res.config.url });
         return res;
       },
-      (err) => {
-        logger.error("ERP request failed", {
-          url: err.config?.url,
-          status: err.response?.status,
+      async (err) => {
+        const config = err.config;
+        const status = err.response?.status;
+        config._retryCount = config._retryCount ?? 0;
+
+        // Retry on 5xx server errors and network timeouts (not 4xx — those are caller bugs)
+        const isRetryable =
+          !status || // network error / timeout
+          (status >= 500 && status < 600);
+
+        if (isRetryable && config._retryCount < 3) {
+          config._retryCount += 1;
+          const delayMs = Math.min(1000 * Math.pow(2, config._retryCount - 1), 8000);
+          logger.warn("ERP request failed — retrying", {
+            url: config.url,
+            status: status ?? "network_error",
+            attempt: config._retryCount,
+            delayMs,
+          });
+          await new Promise((r) => setTimeout(r, delayMs));
+          return this.client(config);
+        }
+
+        logger.error("ERP request failed after retries", {
+          url: config?.url,
+          status,
           message: err.message,
+          attempts: (config._retryCount ?? 0) + 1,
         });
         return Promise.reject(err);
       }

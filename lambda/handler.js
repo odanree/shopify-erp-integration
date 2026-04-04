@@ -17,6 +17,7 @@
 const serverless = require("serverless-http");
 const app = require("../src/app");
 const inventorySync = require("../src/sync/inventorySync");
+const dlqWorker = require("../src/workers/dlqWorker");
 const logger = require("../src/services/logger");
 
 // ─── HTTP handler (API Gateway / Function URL) ────────────────────────────
@@ -45,6 +46,20 @@ async function handler(event, context) {
   return _serverlessHandler(event, context);
 }
 
+// ─── Scheduled DLQ retry handler (EventBridge cron) ──────────────────────
+
+async function retryDlqHandler(event, context) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  logger.info("Scheduled DLQ retry Lambda invocation", { requestId: context.awsRequestId });
+  try {
+    await dlqWorker.processOnce();
+    return { statusCode: 200, body: JSON.stringify({ ok: true }) };
+  } catch (err) {
+    logger.error("DLQ retry Lambda failed", { error: err.message });
+    return { statusCode: 500, body: JSON.stringify({ ok: false, error: err.message }) };
+  }
+}
+
 // ─── Scheduled inventory sync handler (EventBridge cron) ─────────────────
 
 async function syncInventoryHandler(event, context) {
@@ -69,4 +84,4 @@ async function syncInventoryHandler(event, context) {
   }
 }
 
-module.exports = { handler, syncInventory: syncInventoryHandler };
+module.exports = { handler, syncInventory: syncInventoryHandler, retryDlq: retryDlqHandler };

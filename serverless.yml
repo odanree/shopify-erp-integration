@@ -49,8 +49,24 @@ functions:
           path: /api/sync/orders/pending
           method: GET
       - httpApi:
+          path: /api/dlq/status
+          method: GET
+      - httpApi:
+          path: /api/dlq/retry
+          method: POST
+      - httpApi:
           path: /health
           method: GET
+
+  retryDlq:
+    handler: lambda/handler.retryDlq
+    description: "Scheduled DLQ retry for failed ERP sync operations"
+    timeout: 120
+    events:
+      - schedule:
+          rate: rate(5 minutes)
+          enabled: true
+          description: "Retry failed ERP sync items from dead-letter queue"
 
   syncInventory:
     handler: lambda/handler.syncInventory

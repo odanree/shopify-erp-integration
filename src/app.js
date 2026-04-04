@@ -4,6 +4,7 @@ const express = require("express");
 const crypto = require("crypto");
 const logger = require("./services/logger");
 const routes = require("./routes/index");
+const dlqWorker = require("./workers/dlqWorker");
 
 const app = express();
 
@@ -66,6 +67,7 @@ if (require.main === module) {
       env: process.env.NODE_ENV,
       shop: process.env.SHOPIFY_SHOP_DOMAIN,
     });
+    dlqWorker.start();
   });
 }
 
