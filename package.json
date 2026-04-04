@@ -1,0 +1,30 @@
+{
+  "name": "shopify-erp-integration",
+  "version": "1.0.0",
+  "description": "Shopify ↔ ERP sync via webhook-driven REST integration on AWS Lambda",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test": "jest --coverage",
+    "lint": "eslint src/ lambda/",
+    "deploy": "serverless deploy"
+  },
+  "dependencies": {
+    "@shopify/shopify-api": "^9.0.0",
+    "express": "^4.18.0",
+    "axios": "^1.6.0",
+    "dotenv": "^16.0.0",
+    "winston": "^3.11.0",
+    "serverless-http": "^3.2.0"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "nodemon": "^3.0.0",
+    "eslint": "^8.0.0",
+    "supertest": "^6.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

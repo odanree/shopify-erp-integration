@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      target: runtime
+    ports:
+      - "3000:3000"
+    env_file: .env
+    environment:
+      NODE_ENV: development
+      ERP_BASE_URL: http://mock-erp:4000/api/v1
+    depends_on:
+      mock-erp:
+        condition: service_healthy
+    volumes:
+      # Mount source for hot-reload in development
+      - ./src:/app/src:ro
+      - ./lambda:/app/lambda:ro
+    restart: unless-stopped
+
+  mock-erp:
+    image: node:18-alpine
+    working_dir: /mock
+    command: >
+      sh -c "npm install --silent express &&
+             node server.js"
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./mock-erp:/mock:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  # ── Uncomment to expose local server via ngrok for webhook testing ──────
+  # ngrok:
+  #   image: ngrok/ngrok:latest
+  #   command: http app:3000 --log=stdout
+  #   environment:
+  #     NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+  #   depends_on:
+  #     - app
+  #   ports:
+  #     - "4040:4040"

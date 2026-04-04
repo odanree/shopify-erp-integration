@@ -1,0 +1,76 @@
+service: shopify-erp-integration
+
+frameworkVersion: "3"
+
+plugins:
+  - serverless-dotenv-plugin
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: ${env:AWS_REGION, 'us-east-1'}
+  stage: ${opt:stage, 'prod'}
+  memorySize: 256
+  timeout: 29
+  environment:
+    NODE_ENV: production
+    SHOPIFY_SHOP_DOMAIN: ${env:SHOPIFY_SHOP_DOMAIN}
+    SHOPIFY_ACCESS_TOKEN: ${env:SHOPIFY_ACCESS_TOKEN}
+    SHOPIFY_WEBHOOK_SECRET: ${env:SHOPIFY_WEBHOOK_SECRET}
+    ERP_BASE_URL: ${env:ERP_BASE_URL}
+    ERP_API_KEY: ${env:ERP_API_KEY}
+    ERP_WAREHOUSE_ID: ${env:ERP_WAREHOUSE_ID, 'WH-001'}
+    LOG_LEVEL: ${env:LOG_LEVEL, 'info'}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: "arn:aws:logs:*:*:*"
+
+functions:
+  api:
+    handler: lambda/handler.handler
+    description: "Shopify webhook receiver and sync API"
+    events:
+      - httpApi:
+          path: /api/webhooks/orders/create
+          method: POST
+      - httpApi:
+          path: /api/webhooks/inventory/update
+          method: POST
+      - httpApi:
+          path: /api/sync/inventory
+          method: GET
+      - httpApi:
+          path: /api/sync/orders/pending
+          method: GET
+      - httpApi:
+          path: /health
+          method: GET
+
+  syncInventory:
+    handler: lambda/handler.syncInventory
+    description: "Scheduled ERP ↔ Shopify inventory reconciliation"
+    timeout: 300
+    memorySize: 512
+    events:
+      - schedule:
+          rate: rate(1 hour)
+          enabled: true
+          description: "Hourly inventory sync between ERP and Shopify"
+
+package:
+  exclude:
+    - "**/__tests__/**"
+    - "**/*.test.js"
+    - ".env*"
+    - "docker-compose.yml"
+    - "Dockerfile"
+    - "mock-erp/**"
+    - "coverage/**"
+    - ".git/**"
+    - "node_modules/.cache/**"
