@@ -4,7 +4,7 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production
+RUN npm install --omit=dev --no-audit --prefer-offline 2>/dev/null || npm install --omit=dev --no-audit
 
 # ─── Stage 2: Runtime image ───────────────────────────────────────────────
 FROM node:18-alpine AS runtime
